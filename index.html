@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +13,7 @@ font-family:Arial;
 background:linear-gradient(135deg,#667eea,#764ba2);
 }
 
-/* LOGIN PAGE */
+/* LOGIN */
 
 .login{
 height:100vh;
@@ -40,7 +41,6 @@ border-radius:6px;
 cursor:pointer;
 }
 
-
 /* HEADER */
 
 .header{
@@ -50,7 +50,6 @@ padding:15px;
 text-align:center;
 font-size:22px;
 }
-
 
 /* CONTAINER */
 
@@ -65,8 +64,7 @@ border-radius:10px;
 box-shadow:0 10px 20px rgba(0,0,0,0.2);
 }
 
-
-/* INPUT AREA */
+/* INPUTS */
 
 .inputs{
 display:flex;
@@ -91,7 +89,6 @@ border-radius:6px;
 cursor:pointer;
 }
 
-
 /* SEARCH */
 
 .search{
@@ -104,7 +101,6 @@ border:1px solid #ccc;
 font-size:16px;
 margin-bottom:20px;
 }
-
 
 /* DASHBOARD */
 
@@ -121,7 +117,6 @@ padding:12px 20px;
 border-radius:8px;
 font-weight:bold;
 }
-
 
 /* TABLE */
 
@@ -170,15 +165,10 @@ cursor:pointer;
 <body>
 
 <div class="login" id="loginPage">
-
 <h2>Price Chart</h2>
-
 <input type="password" id="password" placeholder="Enter Password">
-
 <button onclick="login()">Login</button>
-
 </div>
-
 
 <div id="mainPage" style="display:none">
 
@@ -190,12 +180,20 @@ cursor:pointer;
 
 <input type="text" id="productName" placeholder="Product Name">
 
-<input type="number" id="quantity" placeholder="Quantity">
-
-<select id="type">
+<select id="type" onchange="changeType()">
 <option value="Kg">Kg</option>
 <option value="Piece">Piece</option>
 </select>
+
+<select id="weight">
+<option value="50g">50g</option>
+<option value="100g">100g</option>
+<option value="250g">250g</option>
+<option value="500g">500g</option>
+<option value="1Kg">1Kg</option>
+</select>
+
+<input type="number" id="quantity" placeholder="Quantity">
 
 <input type="number" id="receivedPrice" placeholder="Buy Price">
 
@@ -208,11 +206,7 @@ cursor:pointer;
 <input class="search" id="searchBox" placeholder="Search Product" onkeyup="searchProduct()">
 
 <div class="dashboard">
-
 <div class="card">Total Products: <span id="totalProducts">0</span></div>
-
-<div class="card">Total Profit: ₹ <span id="totalProfit">0</span></div>
-
 </div>
 
 <table id="productTable">
@@ -221,9 +215,9 @@ cursor:pointer;
 <th>Product</th>
 <th>Qty</th>
 <th>Type</th>
+<th>Weight</th>
 <th>Buy</th>
 <th>Sell</th>
-<th>Profit</th>
 <th>Edit</th>
 <th>Delete</th>
 </tr>
@@ -263,26 +257,22 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 
-
 window.login=function(){
-
 let pass=document.getElementById("password").value;
-
-if(pass==="4621"){
-
+if(pass==="1234"){
 document.getElementById("loginPage").style.display="none";
 document.getElementById("mainPage").style.display="block";
-
 loadProducts();
-
 }else{
-
 alert("Wrong Password");
-
+}
 }
 
-}
 
+window.changeType=function(){
+let type=document.getElementById("type").value;
+document.getElementById("weight").style.display=(type==="Kg")?"block":"none";
+}
 
 
 window.addProduct=async function(){
@@ -290,6 +280,7 @@ window.addProduct=async function(){
 let name=document.getElementById("productName").value;
 let quantity=parseFloat(document.getElementById("quantity").value)||0;
 let type=document.getElementById("type").value;
+let weight=document.getElementById("weight").value;
 let received=parseFloat(document.getElementById("receivedPrice").value)||0;
 let selling=parseFloat(document.getElementById("sellingPrice").value)||0;
 
@@ -297,6 +288,7 @@ await addDoc(collection(db,"products"),{
 name,
 quantity,
 type,
+weight,
 received,
 selling
 });
@@ -307,19 +299,13 @@ document.getElementById("receivedPrice").value="";
 document.getElementById("sellingPrice").value="";
 
 loadProducts();
-
 }
-
 
 
 window.deleteProduct=async function(id){
-
 await deleteDoc(doc(db,"products",id));
-
 loadProducts();
-
 }
-
 
 
 window.editProduct=async function(id,data){
@@ -330,27 +316,29 @@ if(newName===null) return;
 let newQty=prompt("Edit Quantity",data.quantity);
 if(newQty===null) return;
 
-let newType=prompt("Enter Type (Kg or Piece)",data.type);
+let newType=prompt("Type (Kg/Piece)",data.type);
 if(newType===null) return;
 
-let newBuy=prompt("Edit Buy Price",data.received);
+let newWeight=prompt("Weight (50g,100g...)",data.weight);
+if(newWeight===null) return;
+
+let newBuy=prompt("Buy Price",data.received);
 if(newBuy===null) return;
 
-let newSell=prompt("Edit Sell Price",data.selling);
+let newSell=prompt("Sell Price",data.selling);
 if(newSell===null) return;
 
 await updateDoc(doc(db,"products",id),{
 name:newName,
 quantity:parseFloat(newQty),
 type:newType,
+weight:newWeight,
 received:parseFloat(newBuy),
 selling:parseFloat(newSell)
 });
 
 loadProducts();
-
 }
-
 
 
 async function loadProducts(){
@@ -363,32 +351,28 @@ table.innerHTML=`<tr>
 <th>Product</th>
 <th>Qty</th>
 <th>Type</th>
+<th>Weight</th>
 <th>Buy</th>
 <th>Sell</th>
-<th>Profit</th>
 <th>Edit</th>
 <th>Delete</th>
 </tr>`;
 
-let totalProfit=0;
 let totalProducts=0;
 
 querySnapshot.forEach((docu)=>{
 
 let d=docu.data();
 
-let profit=(d.selling-d.received)*d.quantity;
-
-totalProfit+=profit;
 totalProducts++;
 
 let row=`<tr>
 <td>${d.name}</td>
 <td>${d.quantity}</td>
 <td>${d.type}</td>
+<td>${d.weight || "-"}</td>
 <td>₹ ${d.received}</td>
 <td>₹ ${d.selling}</td>
-<td style="color:green;font-weight:bold">₹ ${profit}</td>
 <td><button class="editBtn" onclick='editProduct("${docu.id}",${JSON.stringify(d)})'>Edit</button></td>
 <td><button class="deleteBtn" onclick='deleteProduct("${docu.id}")'>Delete</button></td>
 </tr>`;
@@ -397,11 +381,9 @@ table.innerHTML+=row;
 
 });
 
-document.getElementById("totalProfit").innerText=totalProfit;
 document.getElementById("totalProducts").innerText=totalProducts;
 
 }
-
 
 
 window.searchProduct=function(){
@@ -426,4 +408,4 @@ row.style.display=text.includes(input)?"":"none";
 
 </body>
 </html>
-
+```
